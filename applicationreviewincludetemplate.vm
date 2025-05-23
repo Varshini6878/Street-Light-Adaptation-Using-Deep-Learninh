@@ -1,0 +1,177 @@
+<%@page contentType="text/html" language="java"%>
+
+<%@taglib uri="http://struts.apache.org/tags-bean" prefix="bean" %>
+<%@taglib uri="http://struts.apache.org/tags-html" prefix="html" %>
+<%@taglib uri="http://struts.apache.org/tags-logic" prefix="logic" %>
+<%@taglib uri="http://java.sun.com/jsp/jstl/fmt" prefix="fmt" %>
+<%@taglib tagdir="/WEB-INF/tags/fd" prefix="fd" %>
+<%@taglib tagdir="/WEB-INF/tags/i90premium" prefix="i90premium" %>
+<%@taglib uri="http://www.jenkov.com/projects/prizetags" prefix="tree" %>
+<%@taglib uri="http://java.sun.com/jstl/core" prefix="c" %> 
+
+<%-- New bean --%>
+<jsp:useBean class="${application.dataModel.className}" id="applicationData" scope="session" />
+<fmt:setBundle basename="${application.resourceBundlePath}" scope="session"/>
+
+
+
+#if(!$page.pageNameKey.contains(".hide"))
+<div class="ReviewSection-questions">
+  #set ($location = $page.pageID.lastIndexOf("-"))
+  #set ($location = $location + 1)
+  #set ($section-page-id = $page.pageID.substring($location,$page.pageID.length()))			
+  #set ($temp = "{") 
+  #set ($counter = 0)
+  #set ($ctr = 0)
+  #set ($temp = "{")
+
+  #foreach ($pageForm in $page.pageForm)
+  #foreach ($pageSection in $pageForm.pageSection)
+  #set ($ctr = $ctr+1)
+  #if ($pageSection.condition)
+  #if ($pageSection.condition.type == "none")
+  <div id="section-$section-page-id.$ctr" style="display:none" class="ReviewSection-group">
+    #else
+    #if($pageSection.condition.type == "greaterEqual")
+    #set ($antonym = 'lessThan')
+    #elseif($pageSection.condition.type == "lessThan")
+    #set ($antonym = 'greaterEqual')
+    #elseif($pageSection.condition.type == "empty")
+    #set ($antonym = 'notEmpty')
+    #elseif($pageSection.condition.type == "notEmpty")
+    #set ($antonym = 'empty')
+    #elseif($pageSection.condition.type == "equal")
+    #set ($antonym = 'notEqual')
+    #elseif($pageSection.condition.type == "notEqual")
+    #set ($antonym = 'equal')
+    #end
+
+    <logic:$pageSection.condition.type $pageSection.condition.parameters>
+    <div id="section-$section-page-id.$ctr" class="ReviewSection-group">
+      </logic:$pageSection.condition.type>
+      <logic:$antonym $pageSection.condition.parameters>
+      <div id="section-$section-page-id.$ctr" style="display:none" class="ReviewSection-group">
+        </logic:$antonym>
+	#end
+        #else
+        <div id="section-$section-page-id.$ctr" class="ReviewSection-group">
+          #end
+
+	  #set ($temp = "{")
+	  #if ($pageSection.headerKey && $pageSection.headerKey.length() > 0)
+	  #set ($hasControl = 0)
+          #foreach ($control in $pageSection.getControl())
+          #set ($controlType = "$control.controlType" )
+          #if ($controlType != "Link_Embedded" && $controlType != "Text" && $controlType !="Link_Navigational" && $controlType != ""  && $controlType!= "${temp}control.controlType"  && $controlType != "Label" && $controlType != "Link_Help" && $controlType != "displayLabel")
+	  #set ($hasControl = 1)
+	  #end
+	  #end
+	  #if ($hasControl == 1)
+          <b><fmt:message  key="$pageSection.headerKey"/></b>
+	  #if ($pageSection.instructionTextKey && $pageSection.instructionTextKey.length() > 0)
+	  <fmt:message key="$pageSection.instructionTextKey"/>
+	  #end			
+	  #end
+          #end
+          #set ($temp = "$") 
+	  #foreach ($control in $pageSection.getControl())
+
+	  #set ($controlType = "$control.controlType" )
+	  #set ($controlID = "$control.controlID" )
+
+	  #if ($controlType != "Link_Embedded" && $controlType !="Link_Navigational" && $controlType != ""  && $controlType!= "${temp}control.controlType"  && $controlType != "Label" && $controlType != "Link_Help" && $controlType != "label" && $controlType != "DateCompare" && $controlType != "Img")
+	  #set( $controldefinition = "$control.definition" )
+
+          #if( $controldefinition.substring(1,12)=="fd:Repeater" )
+	  #set ($temp = $controldefinition.substring(0,$controldefinition.indexOf(">")))
+	  #set( $temp1 = $controldefinition.substring($controldefinition.indexOf(">"),$controldefinition.length()))
+	  #set( $temp = "$temp state='output' linkToPageID='$page.pageID' $temp1" )
+          #set ($controldefinition = $temp)
+	  #end
+
+          #if( $controldefinition.contains("questionAdditionalInstructions") )
+	  #set ($temp = $controldefinition.substring(0,$controldefinition.indexOf(">")))
+	  #set( $temp1 = $controldefinition.substring($controldefinition.indexOf(">"),$controldefinition.length()))
+	  #set( $temp = "$temp state='output' linkToPageID='$page.pageID' $temp1" )
+          #set ($controldefinition = $temp)
+	  #elseif($controlType != "displayLabel")
+          #set( $temp = $controldefinition.substring(0,$controldefinition.indexOf("/>")))
+          #set( $temp1 = $controldefinition.substring($controldefinition.indexOf("/>"),$controldefinition.length()))                      
+
+          #set( $temp = "$temp state='output' linkToPageID='$page.pageID' $temp1" )
+          #set( $hideAnswerKey = "false")
+	  #else
+	  #set( $hideAnswerKey = "true") 
+          #end
+
+          ## code for find substring of key & controlHeaderKey & questionKey for review tag
+	  #set( $reviewkey = "")  
+          #if($controldefinition.indexOf("key=") != -1 )
+	  #set( $tempkey = $controldefinition.substring($controldefinition.indexOf('key="'),$controldefinition.length()))
+          #set( $tempreviewkey = $tempkey.substring(5,$tempkey.length()))
+          #set( $reviewkey = $tempreviewkey.substring(0,$tempreviewkey.indexOf('"')))
+	  #end
+          #if($controldefinition.indexOf("controlHeaderKey") != -1 )
+	  #set( $tempkey = $controldefinition.substring($controldefinition.indexOf('controlHeaderKey="'),$controldefinition.length()))
+          #set( $tempreviewkey = $tempkey.substring(18,$tempkey.length()))
+          #set( $reviewkey = $tempreviewkey.substring(0,$tempreviewkey.indexOf('"')))
+          #end
+          #if($controldefinition.indexOf("questionKey") != -1 )
+	  #set( $tempkey = $controldefinition.substring($controldefinition.indexOf('questionKey="'),$controldefinition.length()))
+          #set( $tempreviewkey = $tempkey.substring(13,$tempkey.length()))
+          #set( $reviewkey = $tempreviewkey.substring(0,$tempreviewkey.indexOf('"')))
+          #end
+          #if($controldefinition.indexOf("repeaterKey") != -1 )
+	  #set( $tempkey = $controldefinition.substring($controldefinition.indexOf('repeaterKey="'),$controldefinition.length()))
+          #set( $tempreviewkey = $tempkey.substring(13,$tempkey.length()))
+          #set( $reviewkey = $tempreviewkey.substring(0,$tempreviewkey.indexOf('"')))
+          #end
+
+	  ## code for find substring of instructionKey for review tag
+	  #set( $instructionkey = "")  
+	  #if($controldefinition.indexOf("instructionText") != -1 )
+	  #set( $tempkey = $controldefinition.substring($controldefinition.indexOf('instructionText="'),$controldefinition.length()))
+	  #set( $tempinstructionkey = $tempkey.substring(17,$tempkey.length()))
+	  #set( $instructionkey = $tempinstructionkey.substring(0,$tempinstructionkey.indexOf('"')))
+	  #end
+
+          ## code to find substring of personalisation for review tag
+          #set( $personalisationValue = "")  
+          #if($controldefinition.indexOf("personalisation") != -1 )
+          #set( $tempkey = $controldefinition.substring($controldefinition.indexOf('personalisation="'),$controldefinition.length()))
+          #set( $tempPersonalisationValue = $tempkey.substring(17,$tempkey.length()))
+          #set( $personalisationValue = $tempPersonalisationValue.substring(0,$tempPersonalisationValue.indexOf('"')))
+          #end
+
+          ## code to find substring of prProperty for review tag
+          #set( $prPropertyValue = "")  
+          #if($controldefinition.indexOf("prProperty") != -1 )
+          #set( $tempkey = $controldefinition.substring($controldefinition.indexOf('prProperty="'),$controldefinition.length()))
+          #set( $tempPrPropertyValue = $tempkey.substring(12,$tempkey.length()))
+          #set( $prPropertyValue = $tempPrPropertyValue.substring(0,$tempPrPropertyValue.indexOf('"')))
+          #end
+
+          ## code to find substring of prProperty1 for review tag
+          #set( $prPropertyValue1 = "")  
+          #if($controldefinition.indexOf("prProperty1") != -1 )
+          #set( $tempkey = $controldefinition.substring($controldefinition.indexOf('prProperty1="'),$controldefinition.length()))
+          #set( $tempPrPropertyValue = $tempkey.substring(13,$tempkey.length()))
+          #set( $prPropertyValue1 = $tempPrPropertyValue.substring(0,$tempPrPropertyValue.indexOf('"')))
+          #end
+	  
+	  #if ($controlType == "Text")
+	  <div class="qaAnswer"><fmt:message  key="$reviewkey"/></div>
+	  #else
+	  <fd:Review  key="$reviewkey" instructionText="$instructionkey" linkToPageID="$page.pageID" personalisation="$personalisationValue" prProperty="$prPropertyValue" prProperty1="$prPropertyValue1"><jsp:attribute name="content">
+	    $temp
+	  </jsp:attribute>
+	  </fd:Review>
+	  #end
+	  #end
+	  #end
+	</div>
+	#end 
+	#end
+      </div> 
+      #end
+      

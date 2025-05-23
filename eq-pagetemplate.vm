@@ -1,0 +1,196 @@
+<%@page contentType="text/html" language="java"%>
+
+<%@taglib uri="http://struts.apache.org/tags-bean" prefix="bean" %>
+<%@taglib uri="http://struts.apache.org/tags-html" prefix="html" %>
+<%@taglib uri="http://struts.apache.org/tags-logic" prefix="logic" %>
+<%@taglib uri="http://java.sun.com/jsp/jstl/fmt" prefix="fmt" %>
+<%@taglib tagdir="/WEB-INF/tags/fd" prefix="fd" %>
+<%@taglib tagdir="/WEB-INF/tags/i90premium" prefix="i90premium" %>
+<%@taglib uri="http://www.jenkov.com/projects/prizetags" prefix="tree" %>
+<%@taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
+<%@ taglib prefix="spring" uri="http://www.springframework.org/tags"%>
+<spring:eval expression="@customEnvironment.getProperty('i90premium.eq.hasSidebar')" var="hasSidebar" scope="request"/>
+<spring:eval expression="@customEnvironment.getProperty('fd.eq.sidebar.sectionCount')" var="defaultClosedSectionCount" scope="request"/>
+<spring:eval expression="@customEnvironment.getProperty('i90premium.eq.sidebar.primary.sectionCount')" var="newSidebarClosedSectionCount" scope="request"/>
+<spring:eval expression="@customEnvironment.getProperty('i90premium.eq.sidebar.secondary.sectionCount')" var="newSidebarClosedSecondarySectionCount" scope="request"/>
+<spring:eval expression="@customEnvironment.getProperty('fd.eq.sidebar.new')" var="newSidebar" scope="request"/>
+
+<%@page import="java.util.Vector,java.net.*" %>
+<%@page import="java.util.*" %>
+<%@page import="com.jamonapi.*" %>
+
+<%-- New bean --%>
+<jsp:useBean class="${application.dataModel.className}" id="applicationData" scope="session" />
+<fmt:setLocale value="${sessionScope.locale.language}" scope="session"/>
+<fmt:setBundle basename="${application.resourceBundlePath}" scope="session"/>
+
+<!DOCTYPE html>
+<html class="ProductHTML-isResponsive ProductHTML Language-${sessionScope.locale.language}">
+<head>
+    <meta charset="utf-8">
+    <title>#if(${page.pageNameKey}) <fmt:message   key="${page.pageNameKey}"/> #end</title>
+    <%@ include file="/eq-styles-include.jsp" %>
+</head>
+    #if($page.pageID.contains("EQ-3.4"))
+        <%
+            applicationData.getQuiz().resetEQ();
+        %>
+    #end
+<body class="ProductBody ProductBody-WithSidebar">
+<div class="Site">
+    <%@ include file="/EQ-header.jsp" %>
+    <!-- Content Starts Here -->
+    <div class="SiteContent">
+        <div class="SiteContent-container">
+            <div class="App">
+                #if(!$page.pageID.equals("EQ-3.4") && !$page.pageID.equals("EQ-3.5"))
+                    <fd:EQ-SubHeader />
+                #end
+
+                #if($page.pageID.equals("EQ-3.4") || $page.pageID.equals("EQ-3.5"))
+                    <div class="EqSubHeader">
+                        <div class="EqSubHeader-label">
+                            <fmt:message key='EQ-3.4.pageheader' />
+                        </div>
+                    </div>
+                #end
+
+                <div class="FixedLayout App-layout">
+
+                    <fd:EQ-LeftNavigationTree
+                            defaultClosedSectionCount="${defaultClosedSectionCount}"
+                            newSidebarClosedSectionCount="${newSidebarClosedSectionCount}"
+                            newSidebarClosedSecondarySectionCount="${newSidebarClosedSecondarySectionCount}"
+                    />
+
+                    <div class="FixedLayoutMain App-main">
+                        <div class="Page">
+                            <form
+                                    spellcheck="true"
+                                    autocapitalize="off"
+                                    autocorrect="off"
+                                    autocomplete="on"
+                                    action="<%=actionMappingHelper.getWizard()%>"
+                                    method="POST"
+                                    name="mainForm"
+                                    class="ControllerForm">
+                                <div class="EqQuestionPage">
+                                    <div class="PageError" id="errors-page" style="display:none"></div>
+                                    <div class="Questions EqQuestionPage-questions">
+                                        <input type="hidden" id="applyValidation" name="applyValidation" value="${actionForm.map.applyValidation}"/>
+                                        <input type="hidden" id="pageStatus" name="pageStatus" value="PAGE_STATUS_NOT_VISITED"/>
+                                        <input type="hidden" class="hidden" name="page" value="<%= request.getRequestURI()%>"/>
+                                        <input type="hidden" class="hidden" name="contid" value='<%=request.getAttribute("contid")%>'/>
+                                        <input type="hidden" class="hidden" name="interaction" value="eq"/>
+                                        <div id="hidden" style="display: none"></div>
+                                        <script type="text/javascript" language="JavaScript">
+                                            validation_preRegister("common","<div class='PageError-label'><fmt:message key='control.complete.highlightedfields'/></div>","");
+                                        </script>
+                                        #set ($location = $page.pageID.lastIndexOf("-"))
+                                        #set ($location = $location + 1)
+                                        #set ($section-page-id = $page.pageID.substring($location,$page.pageID.length()))
+                                        #set ($counter = 0)
+                                        #foreach ($pageForm in $page.getPageForm())
+                                            #foreach ($pageSection in $pageForm.getPageSection())
+                                                #set ($counter = $counter+1)
+                                                #if ($pageSection.condition)
+                                                    #if($pageSection.condition.type == "greaterEqual")
+                                                        #set ($antonym = 'lessThan')
+                                                    #elseif($pageSection.condition.type == "lessThan")
+                                                        #set ($antonym = 'greaterEqual')
+                                                    #elseif($pageSection.condition.type == "empty")
+                                                        #set ($antonym = 'notEmpty')
+                                                    #elseif($pageSection.condition.type == "notEmpty")
+                                                        #set ($antonym = 'empty')
+                                                    #elseif($pageSection.condition.type == "equal")
+                                                        #set ($antonym = 'notEqual')
+                                                    #elseif($pageSection.condition.type == "notEqual")
+                                                        #set ($antonym = 'equal')
+                                                    #end
+                                                    <logic:$pageSection.condition.type $pageSection.condition.parameters>
+                                                       <div class="QuestionSectionGroup" id="section-$section-page-id.$counter">
+                                                    </logic:$pageSection.condition.type>
+                                                    <logic:$antonym $pageSection.condition.parameters>
+                                                        <div id="section-$section-page-id.$counter" style="display:none">
+                                                    </logic:$antonym>
+                                                #else
+                                                    <div class="QuestionSectionGroup" id="section-$section-page-id.$counter">
+                                                #end
+                                                <!-- Error div for Page -->
+                                                <div id="errors-section-$counter" style="display:none">
+                                                </div>
+                                                #foreach ($control in $pageSection.getControl())
+                                                    $control.definition
+                                                #end
+                                                </div>
+                                            #end
+                                        #end
+                                    </div>
+                                    #if($page.pageID.equals("EQ-1.1") || $page.pageID.equals("EQ-3.4"))
+                                        <fd:EQ-Button_Navigation hasBack="false" />
+                                    #elseif($page.pageID.equals("EQ-3.5"))
+                                        <i90premium:EQ-Reminder_Navigation phoneNo="${applicationData.quiz.gcReminder.customFormattedPhone}"
+                                                                    emailID="${applicationData.quiz.gcReminder.emailAddress}"
+                                                                    pageID="EQ-3.5" />
+                                    #else
+                                        <fd:EQ-Button_Navigation/>
+                                    #end
+                                    #if($page.pageID.equals("EQ-3.4") || $page.pageID.equals("EQ-3.5"))
+                                          <%@ include file="/EQ-footer-gcReminder.jsp" %>
+                                    #end
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Footer Starts Here -->
+    <%@ include file="/EQ-footer.jsp" %>
+    <!-- Footer Ends Here -->
+    <!-- Event Tracking start -->
+     #if($page.pageID.equals("EQ-1.1"))
+        <%@ include file="/eventTrackingScript.jsp" %>
+    #end
+    <!-- Event Tracking ends -->
+</div>
+<%@ include file="/mobile-nav.jsp" %>
+<script type="text/javascript">
+         //This will be triggered any learnMore is clicked
+         $(function(event){
+             makeModalAdjustable();
+         });
+
+         function makeModalAdjustable(){
+             var isMobile = {
+                 Android: function() {return navigator.userAgent.match(/Android/i);},
+                 BlackBerry: function() {return navigator.userAgent.match(/BlackBerry/i);},
+                 iOS: function() {return navigator.userAgent.match(/iPhone|iPad|iPod/i);},
+                 iOS12: function() {return (/iPad|iPhone|iPod/.test(navigator.platform) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)) && !window.MSStream;},
+                 Opera: function() {return navigator.userAgent.match(/Opera Mini/i);},
+                 Windows: function() {return navigator.userAgent.match(/IEMobile/i);},
+                 any: function() {return (isMobile.Android() || isMobile.BlackBerry() || isMobile.iOS() || isMobile.iOS12() || isMobile.Opera() || isMobile.Windows());}
+             };
+
+             $(".StaticModal-overlay").css({
+                 top: 0,
+                 left: 0,
+                 marginTop: 15
+             });
+
+             if(isMobile.any()) {
+                 $('.StaticModal-overlay').addClass('StaticModal-overlayMobile');
+             }
+
+             $(".StaticModal-overlay").draggable({
+                 cursor: "move",
+                 opacity: '.8',
+                 cancel: 'label, input, select, a,textarea'
+             });
+
+             $(".StaticModal-overlay").resizable();
+         }
+      </script>
+</body>
+</html>

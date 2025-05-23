@@ -1,0 +1,385 @@
+<%@page contentType="text/html" language="java"%>
+
+<%@taglib uri="http://struts.apache.org/tags-bean" prefix="bean" %>
+<%@taglib uri="http://struts.apache.org/tags-html" prefix="html" %>
+<%@taglib uri="http://struts.apache.org/tags-logic" prefix="logic" %>
+<%@taglib uri="http://java.sun.com/jsp/jstl/fmt" prefix="fmt" %>
+<%@taglib tagdir="/WEB-INF/tags/fd" prefix="fd" %>
+<%@taglib tagdir="/WEB-INF/tags/i90premium" prefix="i90premium" %>
+<%@taglib uri="http://www.jenkov.com/projects/prizetags" prefix="tree" %>
+<%@taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
+
+<%@page import="java.net.*" %>
+<%@page import="java.util.*" %>
+<%@page import="com.jamonapi.*" %>
+<%@page import="java.lang.String" %>
+
+
+<%-- New bean --%>
+<jsp:useBean class="${application.dataModel.className}" id="applicationData" scope="session"/>
+<jsp:useBean class="com.formsdirectinc.dao.ApplicationTable" id="applicationTable" scope="session"/>
+<jsp:useBean class="com.formsdirectinc.dao.CustomerSignup" id="customerSignup" scope="session"/>
+<fmt:setLocale value="${sessionScope.applicationTable.applicationMetaData.language}" scope="session"/>
+<fmt:setBundle basename="${application.resourceBundlePath}" scope="session"/>
+
+
+<!DOCTYPE html>
+<html class="ProductHTML Language-${sessionScope.applicationTable.applicationMetaData.language}">
+<head>
+
+    <title> #if(${page.pageNameKey}) <fmt:message key="${page.pageNameKey}"/> #end </title>
+    <%@ include file="/styles-include.jsp" %>
+</head>
+<body class="ProductBody">
+<div class="Site">
+    <!-- include header -->
+    <%@ include file="/SQ-page-header.jsp" %>
+    <!-- end header table -->
+    <!-- PRIMARY TABLE -->
+    <!-- end header -->
+
+
+    #set($imagePath="@fd-application-template-images-dir@")
+    #foreach ($formList in $application.applicationForms)
+        #foreach ($sectionList in $formList.section)
+            #foreach ($pageList in $sectionList.page)
+                #if($pageList.PageID == $page.pageID)
+                    #set ($sectionId = $sectionList.sectionID)
+                #end
+            #end
+        #end
+    #end
+
+    <!--form section starts-->
+    <div class="SiteContent">
+        <div class="SiteContent-container">
+            <div class="App">
+                <!-- subheader starts-->
+                <%@ include file="/SQ-SubHeader-wizard.jsp" %>
+                <!-- subheader ends-->
+                <div class="FixedLayout App-layout">
+                    <!--LNT starts-->
+                    <div class="FixedLayoutAside App-aside">
+                        <div class="LegacyNav">
+                            <div class="nav application-nav">
+                                <!-- Include navigation Tree -->
+                                <fd:LeftNavigationTree
+                                        parentExpansionTreeNode="application-review"
+                                        expansionTreeNode="${sectionId}"
+                                        selectTreeNode="${page.pageID}"
+                                        treeImage="$imagePath"
+                                        navFile="/WEB-INF/xml/AppNavigation.xml"
+                                        navAction="<%=actionMappingHelper.getWizard()%>"
+                                        upsellRequired="true"
+                                        upsellPage="${applicationReviewModel.upsellPage}"
+                                />
+                            </div>
+                        </div>
+                    </div>
+                    <!--LNT ends-->
+
+                    <!-- CENTER PANE -->
+                    <div class="FixedLayoutMain App-main">
+                        <div class="Page">
+                            <form id="mainForm" name="mainForm" action="<%=actionMappingHelper.getWizard()%>"
+                                  method="POST" class="ControllerForm">
+                                <input type="hidden" id="applyValidation" name="applyValidation"
+                                       value="${actionForm.map.applyValidation}"/>
+                                <input type="hidden" id="pageStatus" name="pageStatus" value="PAGE_STATUS_NOT_VISITED"/>
+                                <input type="hidden" class="hidden" name="page" value="<%= request.getRequestURI()%>"/>
+                                <input type="hidden" class="hidden" name="contid"
+                                       value='<%=request.getAttribute("contid")%>'/>
+                                <input type="hidden" class="hidden" name="interaction" value="SQ"/>
+                                <!-- Error div for Page -->
+                                <div id="hidden" style="display: none"></div>
+
+                                <script type="text/javascript" language="JavaScript">
+                                    validation_preRegister("common", "<div class='PageError-label'><fmt:message key='control.complete.highlightedfields'/></div>", "");
+                                </script>
+                                <!-- page -->
+                                #set ($gcReminderPages = "SQ-3.1.7")
+                                #set ($pageClass = "SqPage")
+                                #set ($showPageLabel = true)
+                                #foreach($gcReminderPage in $gcReminderPages.split("\,"))
+                                    #if ($gcReminderPage.equals($page.pageID))
+                                        #set ($pageClass = "SqPage GCReminderPage")
+                                        #set ($showPageLabel = false)
+                                    #end
+                                #end
+                                #set ($ssnPageClass = "")
+                                #set ($ssnPage = "no")
+                                #if($page.pageID.equals("SQ-5.1"))
+                                    #set ($ssnPageClass = " SocialSecurityNumber")
+                                    #set ($ssnPage = "yes")
+                                #end
+                                <div class="${pageClass}">
+                                    <div class="PageHeading${ssnPageClass}">
+                                        #if($showPageLabel)
+                                            <div class="PageHeading-label">
+                                                <fmt:message key="${sectionId}.page.label"/>
+                                            </div>
+                                        #end
+                                        <div class="PageHeading-title">
+                                            <fmt:message key="${page.pageID}.page.title"/>
+                                        </div>
+                                    </div>
+                                    <div id="errors-page" class="PageError" style="display:none"></div>
+
+                                    <!-- Questions starts here -->
+                                    <div class="Questions${ssnPageClass}">
+                                        #set ($location = $page.pageID.lastIndexOf("-"))
+                                        #set ($location = $location + 1)
+                                        #set ($section-page-id = $page.pageID.substring($location,$page.pageID.length()))
+                                        #set ($counter = 0)
+                                        #foreach ($pageForm in $page.getPageForm())
+                                            #foreach ($pageSection in $pageForm.getPageSection())
+                                                #set ($counter = $counter+1)
+                                                #if ($pageSection.condition)
+                                                    #if ($pageSection.condition.type == "none")
+                                                    <div id="section-$section-page-id.$counter" style="display:none">
+                                                    #else
+                                                        #if($pageSection.condition.type == "greaterEqual")
+                                                            #set ($antonym = 'lessThan')
+                                                        #elseif($pageSection.condition.type == "lessThan")
+                                                            #set ($antonym = 'greaterEqual')
+                                                        #elseif($pageSection.condition.type == "empty")
+                                                            #set ($antonym = 'notEmpty')
+                                                        #elseif($pageSection.condition.type == "notEmpty")
+                                                            #set ($antonym = 'empty')
+                                                        #elseif($pageSection.condition.type == "equal")
+                                                            #set ($antonym = 'notEqual')
+                                                        #elseif($pageSection.condition.type == "notEqual")
+                                                            #set ($antonym = 'equal')
+                                                        #elseif($pageSection.condition.type == "greaterThan")
+                                                            #set($antonym = 'lessEqual')
+                                                        #end
+                                                        <logic:$pageSection.condition.type $pageSection.condition.parameters>
+                                                            <div id="section-$section-page-id.$counter"
+                                                                 class="QuestionSectionGroup">
+                                                        </logic:$pageSection.condition.type>
+                                                        <logic:$antonym $pageSection.condition.parameters>
+                                                            <div id="section-$section-page-id.$counter"
+                                                                 class="QuestionSectionGroup" style="display:none">
+                                                        </logic:$antonym>
+                                                    #end
+                                                #else
+                                                <div id="section-$section-page-id.$counter"
+                                                     class="QuestionSectionGroup">
+                                                #end
+                                                <!-- Error div for Page -->
+                                                <div id="errors-section-$counter" style="display:none">
+                                                </div>
+                                                #foreach ($control in $pageSection.getControl())
+                                                    $control.definition
+                                                #end
+                                            </div>
+                                            #end
+                                        #end
+                                    </div>
+                                        <!-- Question ends here -->
+
+                                        #if(!$page.pageID.equals("SQ-1.1.3.1.1") && !$page.pageID.equals("SQ-5.1.2.4.1") && !$page.pageID.equals("SQ-3.1.7"))
+                                            #set($showDefaultButtons=true)
+                                            #if($page.pageID.equals("SQ-1.1"))
+                                                #set($showDefaultButtons=false)
+                                                <fd:Button_Navigation
+                                                        forceUpdateNextIncomplete="true"
+                                                        hasBack="false"
+                                                        hasSkip="false"/>
+                                            #end
+                                            #set($pagesWithoutSkip =
+                                                "SQ-1.1.3,SQ-1.3,SQ-2.1,SQ-3.1,SQ-3.1.2,SQ-3.1.4,SQ-3.1.5,SQ-3.1.6,SQ-3.2,SQ-4.2.1,SQ-4.3,SQ-5.1.1,SQ-5.1.2,SQ-5.1.2.1,SQ-5.1.2.4,SQ-5.1.2.5,SQ-5.1.2.4.1,SQ-5.1.2.4.2,SQ-6.1")
+                                            #foreach($skipPages in $pagesWithoutSkip.split("\,"))
+                                                #if($skipPages.equals($page.pageID))
+                                                    #set($showDefaultButtons=false)
+                                                    <fd:Button_Navigation
+                                                            forceUpdateNextIncomplete="true"
+                                                            hasSkip="false"/>
+                                                #end
+                                            #end
+
+
+                                            <!-- Previous button only - Stop pages -->
+                                            #set($pagesPreviousOnly = "SQ-3.1.3,SQ-1.1.3.2")
+                                            #foreach($skipPages in $pagesPreviousOnly.split("\,"))
+                                                #if($skipPages.equals($page.pageID))
+                                                    #set($showDefaultButtons=false)
+                                                    <fd:Button_Navigation
+                                                            hasContinue="false"
+                                                            hasSkip="false"
+                                                            hasNextIncomplete="false"/>
+                                                #end
+                                            #end
+
+
+                                            <!-- Smart check specific pages starts -->
+
+                                            #if($page.pageID.equals("SQ-1.2.3"))
+                                                #set($showDefaultButtons=false)
+                                                <fd:Button_Navigation
+                                                        forceUpdateNextIncomplete="true"
+                                                        previousButtonKey="SQ-1.2.3.previousKey"
+                                                        previousButtonURL="javascript:goToPage('SQ-1.2.2')"
+                                                        hasNextIncomplete="false"
+                                                        hasSkip="false"/>
+                                            #end
+
+                                            #if($page.pageID.equals("SQ-3.1.4.1"))
+                                                #set($showDefaultButtons=false)
+                                                <fd:Button_Navigation
+                                                        forceUpdateNextIncomplete="true"
+                                                        previousButtonKey="SQ-3.1.4.1.previousKey"
+                                                        previousButtonURL="javascript:goToPage('SQ-3.1.4')"
+                                                        hasNextIncomplete="false"
+                                                        hasSkip="false"/>
+                                            #end
+
+                                            #if($page.pageID.equals("SQ-3.1.4.2"))
+                                                #set($showDefaultButtons=false)
+                                                <fd:Button_Navigation
+                                                        forceUpdateNextIncomplete="true"
+                                                        previousButtonKey="SQ-3.1.4.2.previousKey"
+                                                        previousButtonURL="javascript:goToPage('SQ-3.1.4')"
+                                                        hasNextIncomplete="false"
+                                                        hasSkip="false"/>
+                                            #end
+
+                                            #if($page.pageID.equals("SQ-4.2.2"))
+                                                #set($showDefaultButtons=false)
+                                                <fd:Button_Navigation
+                                                        forceUpdateNextIncomplete="true"
+                                                        previousButtonKey="SQ-4.2.2.previousKey"
+                                                        previousButtonURL="javascript:goToPage('save.do')"
+                                                        hasNextIncomplete="false"
+                                                        hasSkip="false"/>
+                                            #end
+
+                                            <!-- Smart check specific pages ends -->
+
+
+
+                                            #if($showDefaultButtons)
+                                                <fd:Button_Navigation
+                                                        forceUpdateNextIncomplete="true"/>
+                                            #end
+                                        #end
+                                    </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!--Footer starts-->
+    <%@ include file="/SQ-footer.jsp" %>
+    <!--Footer starts-->
+    <%@ include file="session-timeout-popup.jsp" %>
+    <!-- mobile-nav start -->
+    <div id="SiteSidebar" class="SiteSidebar">
+        <div class="SiteSidebar-container">
+            <%@ include file="SQ-mobile-nav-wizard.jsp" %>
+            <fd:Mob-LeftNavigationTree
+                    parentExpansionTreeNode="application-review"
+                    expansionTreeNode="${sectionId}"
+                    selectTreeNode="${page.pageID}"
+                    navFile="/WEB-INF/xml/AppNavigation.xml"
+                    navAction="<%=actionMappingHelper.getWizard()%>"
+                    upsellRequired="true"
+                    upsellPage="${applicationReviewModel.upsellPage}"
+            />
+        </div>
+    </div>
+    <!-- mobile-nav end -->
+</div>
+<%
+if(request.getAttribute("error") != null)
+{
+String serverSideError = (String)request.getAttribute("error");
+String formname = (String)request.getAttribute("formname");
+pageContext.setAttribute("formname",formname);
+pageContext.setAttribute("serverSideError",serverSideError);
+%>
+<script type="text/javascript" language="JavaScript">
+    serverSideErrorDisplay("${formname}", '<fmt:message key="${serverSideError}"/>');
+</script>
+<%
+}
+%>
+
+<% if(session.getAttribute("errorFields")!=null) {
+ArrayList <String> errorFields = (ArrayList<String>)session.getAttribute("errorFields");
+        String errorMsg = (String)session.getAttribute("errorMsg");
+        errorMsg = errorMsg.replace("\"","&#34;").replace("\'","&#39;");
+        %>
+        <script type="text/javascript" language="JavaScript">
+            <% for(String errorField : errorFields){ %>
+            var errorField = document.getElementsByName('<%=errorField%>')[0]
+            var errorFieldId = '<%=errorField%>'
+            if (errorField != null) {
+                highlight(errorField)
+                ShowContent("errors-page")
+                document.getElementById("errors-page").innerHTML = "<div class='PageError-label'><%=errorMsg%></div>"
+                if (errorFieldId.indexOf("[") != -1) {
+                    var repeaterFieldName = errorFieldId.replace("[", "@").replace("]", "@");
+                    var repeaterIndex = repeaterFieldName.split("@")[1];
+                    $("#repeater_row_" + repeaterIndex).addClass("AnswerField error")
+                }
+            }
+            <% } %>
+        </script>
+        <% } %>
+
+        <script type="text/javascript">
+            //This will be triggered any learnMore is clicked
+            $(function (event) {
+                makeModalAdjustable();
+            });
+
+            function makeModalAdjustable() {
+                var isMobile = {
+                    Android: function () {
+                        return navigator.userAgent.match(/Android/i);
+                    },
+                    BlackBerry: function () {
+                        return navigator.userAgent.match(/BlackBerry/i);
+                    },
+                    iOS: function () {
+                        return navigator.userAgent.match(/iPhone|iPad|iPod/i);
+                    },
+                    iOS12: function () {
+                        return (/iPad|iPhone|iPod/.test(navigator.platform) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)) && !window.MSStream;
+                    },
+                    Opera: function () {
+                        return navigator.userAgent.match(/Opera Mini/i);
+                    },
+                    Windows: function () {
+                        return navigator.userAgent.match(/IEMobile/i);
+                    },
+                    any: function () {
+                        return (isMobile.Android() || isMobile.BlackBerry() || isMobile.iOS() || isMobile.iOS12() || isMobile.Opera() || isMobile.Windows());
+                    }
+                };
+
+                $(".StaticModal-overlay").css({
+                    top: 0,
+                    left: 0,
+                    marginTop: 15
+                });
+
+                if (isMobile.any()) {
+                    $('.StaticModal-overlay').addClass('StaticModal-overlayMobile');
+                }
+
+                $(".StaticModal-overlay").draggable({
+                    cursor: "move",
+                    opacity: '.8',
+                    cancel: 'label, input, select, a,textarea'
+                });
+
+                $(".StaticModal-overlay").resizable();
+            }
+        </script>
+
+</body>
+</html>

@@ -1,0 +1,11 @@
+version: 0.0
+os: linux
+files:
+  - source: i90premium.war
+    destination: /usr/www/code-deploy
+
+hooks:
+  BeforeInstall:
+    - location: scripts/backup.sh
+      timeout: 60
+      runas: root

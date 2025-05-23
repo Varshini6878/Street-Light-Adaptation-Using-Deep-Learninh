@@ -1,0 +1,39 @@
+buildscript {
+    ext {
+        toolkitVersion = "2023.3.33"
+    }
+
+    repositories {
+        mavenLocal()
+        mavenCentral()
+
+        maven {
+            credentials {
+                username mavenUser
+                password mavenPassword
+            }
+
+            url "http://repository.dcis.net/repository/all/"
+        }
+    }
+
+    dependencies {
+        classpath "com.formsdirectinc.tools:toolkit-plugin:${toolkitVersion}"
+    }
+}
+
+apply plugin: "fd-product-toolkit"
+
+formsDirectApplication {
+    stylesVersion = "2023.0.22"
+    sites "$fdSites"
+
+    country "us"
+    toolkitDataType "basic"
+
+    translations {
+        projectId = "i-90premium"
+        key = "a44a6bf926dedd6603ded0b3e1e1cd66"
+        languages = ["en", "es"]
+    }
+}
